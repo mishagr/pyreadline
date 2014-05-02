@@ -1,13 +1,13 @@
 =============================
 pyreadline with linux support
 =============================
-This fork of pyreadline is aimed to make pyreadline to run on *nix platforms as well.
-Although on Unix platform one can usually find integrated readline functionality some python interpreters
+This fork of pyreadline provides beta support of Linux platform in addition to pyreadline's natural Widows environment.
+Although on Unix platform one can usually find integrated readline functionality, some python interpreters
 (e.g. PyPy) may not support it.
 In addition I believe that pyreadline provide wider range of functionality and customization possibilities
 than basic python readline api.
-First working beta implementation will be uploaded in a few days.
-Stay tuned.
+The reasons above caused me to do this porting.
+
 
 ==========
 pyreadline
