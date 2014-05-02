@@ -57,6 +57,7 @@ class BaseMode(object):
         self.paste_line_buffer=[]
 
         self._sub_modes=[]
+        self.updateLine = False
 
 
     def __repr__(self):
@@ -83,6 +84,13 @@ class BaseMode(object):
     argument_reset=property(_argreset)
         
 #used in readline
+    ctrl_c_tap_time_interval=property(*_gs(u"ctrl_c_tap_time_interval"))
+    allow_ctrl_c=property(*_gs(u"allow_ctrl_c"))
+    _print_prompt=property(_g(u"_print_prompt"))
+    _update_line=property(_g(u"_update_line"))
+    console=property(_g(u"console"))
+    prompt_begin_pos=property(_g(u"prompt_begin_pos"))
+    prompt_end_pos=property(_g(u"prompt_end_pos"))
     ctrl_c_tap_time_interval=property(*_gs("ctrl_c_tap_time_interval"))
     allow_ctrl_c=property(*_gs("allow_ctrl_c"))
     _print_prompt=property(_g("_print_prompt"))
@@ -90,6 +98,14 @@ class BaseMode(object):
     console=property(_g("console"))
     prompt_begin_pos=property(_g("prompt_begin_pos"))
     prompt_end_pos=property(_g("prompt_end_pos"))
+    ctrl_c_tap_time_interval=property(*_gs(u"ctrl_c_tap_time_interval"))
+    allow_ctrl_c=property(*_gs(u"allow_ctrl_c"))
+    _print_prompt=property(_g(u"_print_prompt"))
+    _update_line=property(_g(u"_update_line"))
+    console=property(_g(u"console"))
+    prompt_begin_pos=property(_g(u"prompt_begin_pos"))
+    prompt_end_pos=property(_g(u"prompt_end_pos"))
+    line_end_pos=property(_g(u"line_end_pos"))
 
 #used in completer _completions
 #    completer_delims=property(*_gs("completer_delims"))
@@ -131,12 +147,19 @@ class BaseMode(object):
 ####################################
 
 
-    def finalize(self):
+    def finalize(self, updateLine=True):
         """Every bindable command should call this function for cleanup. 
         Except those that want to set argument to a non-zero value.
+        If <updateLine> parameter is False current input line will not be redrawn after processing of the command
         """
         self.argument = 0
+        self.updateLine = updateLine
 
+    def shouldUpdateLine(self):
+        """This method is called by rlmain to check if the line on the screen should be updated"""
+        updateLine = self.updateLine
+        self.updateLine = False
+        return updateLine
 
     def add_history(self, text):
         self._history.add_history(lineobj.ReadLineTextBuffer(text))
@@ -229,10 +252,14 @@ class BaseMode(object):
             log('fnames=<%s>' % list(map(ensure_unicode, completions)))
         return completions
 
+    def go_end_of_line(self):
+        if self.line_end_pos:
+            self.console.pos(self.line_end_pos[0], self.line_end_pos[1])
 
     def _display_completions(self, completions):
         if not completions:
             return
+        self.go_end_of_line()
         self.console.write('\n')
         wmax = max(map(len, completions))
         w, h = self.console.size()
@@ -325,36 +352,36 @@ class BaseMode(object):
     def forward_char(self, e): # (C-f)
         """Move forward a character. """
         self.l_buffer.forward_char(self.argument_reset)
-        self.finalize()
+        self.finalize(updateLine=False)
 
     def backward_char(self, e): # (C-b)
         """Move back a character. """
         self.l_buffer.backward_char(self.argument_reset)
-        self.finalize()
+        self.finalize(updateLine=False)
 
     def forward_word(self, e): # (M-f)
         """Move forward to the end of the next word. Words are composed of
         letters and digits."""
         self.l_buffer.forward_word(self.argument_reset)
-        self.finalize()
+        self.finalize(updateLine=False)
 
     def backward_word(self, e): # (M-b)
         """Move back to the start of the current or previous word. Words are
         composed of letters and digits."""
         self.l_buffer.backward_word(self.argument_reset)
-        self.finalize()
+        self.finalize(updateLine=False)
 
     def forward_word_end(self, e): # ()
         """Move forward to the end of the next word. Words are composed of
         letters and digits."""
         self.l_buffer.forward_word_end(self.argument_reset)
-        self.finalize()
+        self.finalize(updateLine=False)
 
     def backward_word_end(self, e): # ()
         """Move forward to the end of the next word. Words are composed of
         letters and digits."""
         self.l_buffer.backward_word_end(self.argument_reset)
-        self.finalize()
+        self.finalize(updateLine=False)
 
 ### Movement with extend selection
     def beginning_of_line_extend_selection(self, e): # 
@@ -549,6 +576,35 @@ class BaseMode(object):
         print(txt)
         self._print_prompt()
         self.finalize()
+    
+    def clear_state(self):
+        """Reset current state of etit mode"""
+        pass
+
+    def get_current_completed_word(self):
+        """Return a current word_between completion separators"""
+        begidx = self.l_buffer.point
+        endidx = self.l_buffer.point
+        buf=self.l_buffer.line_buffer
+        l = len(buf)
+        if l == 0:
+            return ""
+        # if we immediately after the symbol go one character back
+        if begidx == l or buf[begidx] in self.completer_delims:
+            begidx -= 1
+        # find the beginning of the word
+        while begidx > 0:
+            if buf[begidx] in self.completer_delims:
+                begidx += 1
+                break
+            begidx -= 1
+        # find the end of the word
+        while endidx < l:
+            if buf[endidx] in self.completer_delims:
+                break
+            endidx += 1
+        text = ensure_str(u''.join(buf[begidx:endidx]))
+        return text
 
 def commonprefix(m):
     "Given a list of pathnames, returns the longest common leading component"

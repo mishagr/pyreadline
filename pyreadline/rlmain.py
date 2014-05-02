@@ -421,10 +421,11 @@ class Readline(BaseReadline):
     def __init__(self):
         BaseReadline.__init__(self)
         self.console = console.Console()
-        self.selection_color = self.console.saveattr<<4
+        self.selection_color = self.console.get_default_selection_attr()
         self.command_color = None
         self.prompt_color = None
         self.size = self.console.size()
+        self.line_end_pos = None
 
         # variables you can control with parse_and_bind
 
@@ -448,8 +449,7 @@ class Readline(BaseReadline):
         c = self.console
         x, y = c.pos()
         w, h = c.size()
-        c.rectangle((x, y, w+1, y+1))
-        c.rectangle((0, y+1, w, min(y+3,h)))
+        c.clear_range((x,y, -1, min(y+5,h-1)))
 
     def _set_cursor(self):
         c = self.console
@@ -495,13 +495,16 @@ class Readline(BaseReadline):
         else:
             n = c.write_scrolling(ltext, self.command_color)
 
-        x, y = c.pos()       #Preserve one line for Asian IME(Input Method Editor) statusbar
+        x, y = c.pos()       # TODO: Preserve one line for Asian IME(Input Method Editor) statusbar based on conf
         w, h = c.size()
-        if (y >= h - 1) or (n > 0):
+        if (n > 0) and (y == h - 1) and (x == 0):
             c.scroll_window(-1)
-            c.scroll((0, 0, w, h), 0, -1)
-            n += 1
-
+            c.pos(x,y)
+            #c.scroll((0, 0, w, h), 0, -1)
+            #n += 1
+            #c.write("-----")
+            pass
+        self.line_end_pos = (x,y)
         self._update_prompt_pos(n)
         if hasattr(c, "clear_to_end_of_window"): #Work around function for ironpython due 
             c.clear_to_end_of_window()          #to System.Console's lack of FillFunction
@@ -548,8 +551,13 @@ class Readline(BaseReadline):
         c = self.console
         def nop(e):
             pass
+        shouldUpdateLine = True
         try:
             event = c.getkeypress()
+            log("Got event %s is printable=%s more events=%s" % (event,event.keyinfo.isPrintable(), c.more_events_pending()))
+            if c.more_events_pending() and event.keyinfo.isPrintable():
+                log("don't update line char=" + event.char) 
+                shouldUpdateLine = False
         except KeyboardInterrupt:
             event = self.handle_ctrl_c()
         try:
@@ -557,11 +565,17 @@ class Readline(BaseReadline):
         except EOFError:
             logger.stop_logging()
             raise
-        self._update_line()
+        if shouldUpdateLine:
+            if self.mode.shouldUpdateLine():
+                self._update_line()
+            else:
+                # just move cursor
+                self._set_cursor()
         return result
 
     def readline_setup(self, prompt=''):
         BaseReadline.readline_setup(self, prompt)
+        self.console.clear_state()
         self._print_prompt()
         self._update_line()
 
@@ -569,6 +583,8 @@ class Readline(BaseReadline):
         self.readline_setup(prompt)
         self.ctrl_c_timeout = time.time()
         self._readline_from_keyboard()
+        if self.line_end_pos:
+            self.console.pos(self.line_end_pos[0], self.line_end_pos[1])
         self.console.write('\r\n')
         log('returning(%s)' % self.get_line_buffer())
         return self.get_line_buffer() + '\n'
@@ -589,6 +605,11 @@ class Readline(BaseReadline):
             else:
                 self.ctrl_c_timeout = now
         else:
+            if self.line_end_pos:
+                self.console.pos(self.line_end_pos[0], self.line_end_pos[1])
+            self.console.clear_state()
+            self.mode.clear_state()
+        
             raise KeyboardInterrupt
         return event
 

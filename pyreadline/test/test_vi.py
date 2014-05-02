@@ -1555,7 +1555,7 @@ class Tests (unittest.TestCase):
         r.input ('"j"')
         self.assertEqual (r.line, 'bbb')
         r.input ('"k"')
-        self.assertEqual (r.line, 'aaa')
+        self.assertEqual (r.line, '')
 
     def test_history_insert_mode (self):
         r = ViModeTest ()
@@ -1581,16 +1581,18 @@ class Tests (unittest.TestCase):
         r.input ('"iz"')
         self.assertEqual (r.line, 'zaaa')
         r.input ('Down')
-        self.assertEqual (r.line, 'bbb')
+        # Here we see modified 'bbb' value as it is remembered until next
+        # add_history
+        self.assertEqual (r.line, 'bbbz')
         self.assertTrue (r.vi_is_insert_mode)
         r.input ('"y"')
-        self.assertEqual (r.line, 'bbby')
+        self.assertEqual (r.line, 'bbbzy')
         r.input ('Escape')
         r.input ('"j"')
-        self.assertEqual (r.line, 'ccc')
+        self.assertEqual (r.line, 'cccz')
         self.assertTrue (not r.vi_is_insert_mode)
         r.input ('"iy"')
-        self.assertEqual (r.line, 'yccc')
+        self.assertEqual (r.line, 'ycccz')
         self.assertTrue (r.vi_is_insert_mode)
 
     def test_history_cursor_arrow (self):

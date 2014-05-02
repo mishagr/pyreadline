@@ -10,6 +10,12 @@ if in_ironpython:
         success = True
     except ImportError:
         raise
+elif sys.platform.startswith('linux'):
+    try:
+        from .ansi_console import *
+        success = True
+    except ImportError, x:
+        raise
 else:
     try:
         from .console import *

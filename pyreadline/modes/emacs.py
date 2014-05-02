@@ -60,6 +60,11 @@ class IncrementalSearchPromptMode(object):
             if keyinfo.keyname == 'escape':
                 self.l_buffer.set_line(self.subsearch_old_line)
             return True
+        elif keyinfo.keyname in [u'left', u'right']:
+            self.prompt = self.subsearch_oldprompt
+            self.process_keyevent_queue = self.process_keyevent_queue[:-1]
+            self._history.history_cursor = len(self._history.history)
+            return False
         elif keyinfo.keyname:
             pass
         elif keytuple in revtuples:
@@ -125,6 +130,8 @@ class SearchPromptMode(object):
                     res = history.reverse_search_history(self.non_inc_query)
                 else:
                     res = history.forward_search_history(self.non_inc_query)
+            else:
+                res = ""
 
             self._bell()
             self.prompt = self.non_inc_oldprompt
@@ -225,6 +232,7 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
         self._keylog = (lambda x, y: None)
         self.previous_func = None
         self.prompt = ">>> "
+        self.initial_prompt = self.prompt
         self._insert_verbatim = False
         self.next_meta = False  # True to force meta on next character
 
@@ -296,23 +304,27 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
         command. '''
         self._history.previous_history(self.l_buffer)
         self.l_buffer.point = lineobj.EndOfLine
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def next_history(self, e):  # (C-n)
         '''Move forward through the history list, fetching the next
         command. '''
         self._history.next_history(self.l_buffer)
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def beginning_of_history(self, e):  # (M-<)
         '''Move to the first line in the history.'''
         self._history.beginning_of_history()
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def end_of_history(self, e):  # (M->)
         '''Move to the end of the input history, i.e., the line currently
         being entered.'''
         self._history.end_of_history(self.l_buffer)
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def reverse_search_history(self, e):  # (C-r)
@@ -320,6 +332,7 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
         through the history as necessary. This is an incremental search.'''
         log("rev_search_history")
         self._init_incremental_search(self._history.reverse_search_history, e)
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def forward_search_history(self, e):  # (C-s)
@@ -328,6 +341,7 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
         search.'''
         log("fwd_search_history")
         self._init_incremental_search(self._history.forward_search_history, e)
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def history_search_forward(self, e):  # ()
@@ -343,6 +357,7 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
         q = self._history.history_search_forward(self.l_buffer)
         self.l_buffer = q
         self.l_buffer.point = q.point
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def history_search_backward(self, e):  # ()
@@ -358,6 +373,7 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
         q = self._history.history_search_backward(self.l_buffer)
         self.l_buffer = q
         self.l_buffer.point = q.point
+        self.l_buffer.selection_mark = -1
         self.finalize()
 
     def yank_nth_arg(self, e):  # (M-C-y)
@@ -714,6 +730,14 @@ class EmacsMode(DigitArgumentMode, IncrementalSearchPromptMode,
             self._bind_key("alt-%d"%i,      self.digit_argument)
         self._bind_key("alt--",             self.digit_argument)
 
+    def clear_state(self):
+        self.process_keyevent_queue = [self.process_keyevent_queue[0]]
+        self.prompt = self.initial_prompt
+        self.l_buffer.set_line("")
+
+    def readline_setup(self, prompt=u''):
+        basemode.BaseMode.readline_setup(self, prompt)
+        self.initial_prompt = self.prompt
 
 # make it case insensitive
 def commonprefix(m):

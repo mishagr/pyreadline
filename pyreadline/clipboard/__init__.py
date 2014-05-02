@@ -7,7 +7,11 @@ if in_ironpython:
         from .ironpython_clipboard import GetClipboardText, SetClipboardText
     except ImportError:
         from .no_clipboard import GetClipboardText, SetClipboardText
-
+elif sys.platform.startswith('linux'):
+    try:
+        from .no_clipboard import *
+    except ImportError, x:
+        raise
 else:
     try:
         from .win32_clipboard import GetClipboardText, SetClipboardText

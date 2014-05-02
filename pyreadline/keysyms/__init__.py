@@ -12,6 +12,12 @@ if in_ironpython:
         success = True
     except ImportError as x:
         raise
+elif sys.platform.startswith('linux'):
+    try:
+        from .ansi_keysyms import *
+        success = True
+    except ImportError, x:
+        raise
 else:
     try:
         from .keysyms import *

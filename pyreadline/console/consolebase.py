@@ -51,4 +51,50 @@ class baseconsole(object):
     def flush(self):
         pass
 
+    def clear_range(self, pos_range):
+        '''Clears range that may span to multiple lines
+        pas_range is (x1,y1, x2,y2) including
+        y2 >= y1
+        x2 == -1 mean end of line
+        Child classes may provide more efficient implementation
+        '''
+        w, h = self.size()
+        (x1,y1, x2,y2) = pos_range
+        if x2 < 0:
+            x2 = w - 1
+        if y2 < y1:
+            return
+        elif y2 == y1:
+            self.rectangle((x1, y1, x2+1, y2+1))
+            return
+        else:
+            full_rec = [0,y1, w, y2+1]
+            if x1 > 0:
+                self.rectangle((x1,y1, w, y1+1))
+                full_rec[1] = y1+1
+            if x2 < w-1:
+                self.rectangle((0,y2, x2+1, y2+1))
+                full_rec[3] = y2
+            if full_rec[1] < full_rec[3]:
+                self.rectangle(tuple(full_rec))
+
+    def more_events_pending(self):
+        '''This is performance optimization function.
+        If specific console implementation is able to say that there are more keys
+        present in the queue then they can be processed at once before screen is
+        updated.
+        '''
+        return False
+
+    def get_default_selection_attr(self):
+        '''This function returns default representation attributes for selected text.
+        Default implementation sets background  color to saved foreground color and sets
+        foreground to 0.
+        Although in some implementation when initial color scheme is unknown this is not good
+        solution
+        '''
+        return self.saveattr<<4
     
+    def clear_state(self):
+        '''Clears internal caches of console object'''
+        pass

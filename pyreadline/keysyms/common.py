@@ -65,6 +65,19 @@ class KeyPress(object):
     def __repr__(self):
         return "(%s,%s,%s,%s)"%tuple(map(ensure_unicode, self.tuple()))
 
+    def __str__(self):
+        s = ""
+        if self.control:
+            s += "ctrl-"
+        if self.meta:
+            s += "alt-"
+        if self.shift:
+            s += "shift-"
+        if self.keyname:
+            return s + self.keyname
+        else:
+            return s + self.char
+
     def tuple(self):
         if self.keyname:
             return (self.control, self.meta, self.shift, self.keyname)
@@ -79,6 +92,14 @@ class KeyPress(object):
             s = self.tuple()
             o = other.tuple()
             return s == o
+        else:
+            return False
+        
+    def isPrintable(self):
+        if self.control or self.meta or (len(self.char)!=1):
+            return False
+        if ord(" ") <= ord(self.char) <= ord("~"):
+            return True
         else:
             return False
 

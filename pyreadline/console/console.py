@@ -25,6 +25,8 @@ from pyreadline.unicode_helper import ensure_unicode, ensure_str
 from pyreadline.keysyms import make_KeyPress, KeyPress
 from pyreadline.console.ansi import AnsiState, AnsiWriter
 
+from consolebase import baseconsole
+
 try:
     import ctypes.util
     from ctypes import *
@@ -172,8 +174,7 @@ def split_block(text, size=1000):
     return [text[start:start + size] for start in range(0, len(text), size)]
 
 
-
-class Console(object):
+class Console(baseconsole):
     '''Console driver for Windows.
 
     '''

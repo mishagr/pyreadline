@@ -38,6 +38,7 @@ import System
 
 from .event import Event
 from pyreadline.logger import log
+from .consolebase import baseconsole
 
 from pyreadline.keysyms import \
     make_keysym, make_keyinfo, make_KeyPress, make_KeyPress_from_keydescr
@@ -71,7 +72,7 @@ winattr = {"black" : 0,        "darkgray" : 0+8,
            "darkcyan" : 3,     "cyan" : 3+8,
            "gray" : 7,         "white" : 7+8}
 
-class Console(object):
+class Console(baseconsole):
     '''Console driver for Windows.
 
     '''

@@ -17,7 +17,7 @@ port = logging.handlers.DEFAULT_TCP_LOGGING_PORT
 pyreadline_logger = logging.getLogger('PYREADLINE')
 pyreadline_logger.setLevel(logging.DEBUG)
 pyreadline_logger.propagate = False
-formatter = logging.Formatter(str('%(message)s'))
+formatter = logging.Formatter(str('%(asctime)s %(filename)s:%(lineno)d\t%(message)s'), datefmt="%H:%M:%S")
 file_handler = None
 
 class NULLHandler(logging.Handler):
@@ -55,6 +55,7 @@ def stop_socket_log():
 def start_file_log(filename):
     global file_handler
     file_handler = logging.FileHandler(filename, "w")
+    file_handler.setFormatter(formatter)
     pyreadline_logger.addHandler(file_handler)
 
 def stop_file_log():
@@ -69,6 +70,8 @@ def stop_logging():
     stop_file_log()
     stop_socket_log()
 
-def log(s):
-    s = ensure_str(s)
-    pyreadline_logger.debug(s)
+#def log(s):
+#    s = ensure_str(s)
+#    pyreadline_logger.debug(s)
+log = pyreadline_logger.debug
+

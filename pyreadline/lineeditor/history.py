@@ -23,6 +23,17 @@ from pyreadline.logger import log
 
 
 class LineHistory(object):
+    u'''This class manages history of user input
+    It allows navigation and search through history as well as saving/restoring to/from file
+    Modifications to the history items are cached and used for editing.
+    These modifications are discarded when add_history() is executed
+      To visualize this consider history with 2 entries: 'aa', 'cc'
+      User can select first entry and modify it to 'aabb', then he may change his mind and go to second entry
+      and modify it to 'ccdd', after that he may change his mind once again and return to first entry.
+      He will get saved value 'aabb', consider he will modify it to 'aabbcc' and press <enter>
+      Now the history will look like: 'aa', 'cc', 'aabbcc' 
+    Empty lines and repeated lines are not added to the history
+    '''
     def __init__(self):
         self.history = []
         self._history_length = 100
@@ -31,6 +42,7 @@ class LineHistory(object):
         self.lastcommand = None
         self.query = ""
         self.last_search_for = ""
+        self.modified_history = {}
 
     def get_current_history_length(self):
         '''Return the number of lines currently in the history.
@@ -73,7 +85,11 @@ class LineHistory(object):
         '''Clear readline history.'''
         self.history[:] = []
         self.history_cursor = 0
+        self.clear_modified_history()
 
+    def clear_modified_history(self):
+        self.modified_history = {}
+        
     def read_history_file(self, filename=None): 
         '''Load a readline history file.'''
         if filename is None:
@@ -97,33 +113,64 @@ class LineHistory(object):
 
 
     def add_history(self, line):
-        '''Append a line to the history buffer, as if it was the last line typed.'''
+        '''Append a line to the history buffer, as if it was the last line typed.
+        Empty lines are skipped.
+        Repeated line, i.e. line equal to the last one is skipped as well
+        modified history nformation is discarded
+        '''
         line = ensure_unicode(line)
+        log('add_history line="%s" currentlen is %d' % (line.get_line_text(), len(self.history)))
         if not hasattr(line, "get_line_text"):
             line = lineobj.ReadLineTextBuffer(line)
         if not line.get_line_text():
+            if len(self.history) > 0 and len(self.history[-1].get_line_text()) == 0:
+                self.history = self.history[:-1]
             pass
         elif len(self.history) > 0 and self.history[-1].get_line_text() == line.get_line_text():
             pass
+        elif len(self.history) > 0 and len(self.history[-1].get_line_text()) == 0:
+            self.history[-1] = line
         else:
             self.history.append(line)
         self.history_cursor = len(self.history)
+        self.clear_modified_history()
 
+    def get_history_line_text(self):
+        u'''Returns history line at current cursor position
+        If the line was modified returns modified version
+        '''
+        history = self.modified_history.get(self.history_cursor)
+        if history is None:
+            if self.history_cursor >= len(self.history):
+                return u''
+            else:
+                history = self.history[self.history_cursor]
+        return history.get_line_text()
+    def save_modified_history_if_needed(self, current):
+        bufCopy = current.copy()
+        if self.history_cursor == len(self.history):
+            self.history.append(bufCopy) #do not use add_history since we do not want to increment cursor
+        else:
+            if current.get_line_text() != self.history[self.history_cursor].get_line_text():                
+                self.modified_history[self.history_cursor] = bufCopy
+        
     def previous_history(self, current): # (C-p)
         '''Move back through the history list, fetching the previous command. '''
-        if self.history_cursor == len(self.history):
-            self.history.append(current.copy()) #do not use add_history since we do not want to increment cursor
+        self.save_modified_history_if_needed(current)
             
         if self.history_cursor > 0:
             self.history_cursor -= 1
-            current.set_line(self.history[self.history_cursor].get_line_text())
+            current.set_line(self.get_history_line_text())
             current.point = lineobj.EndOfLine
 
     def next_history(self, current): # (C-n)
         '''Move forward through the history list, fetching the next command. '''
+        # save modified history
+        self.save_modified_history_if_needed(current)
+         
         if self.history_cursor < len(self.history) - 1:
             self.history_cursor += 1
-            current.set_line(self.history[self.history_cursor].get_line_text())
+            current.set_line(self.get_history_line_text())
 
     def beginning_of_history(self): # (M-<)
         '''Move to the first line in the history.'''
@@ -134,8 +181,10 @@ class LineHistory(object):
     def end_of_history(self, current): # (M->)
         '''Move to the end of the input history, i.e., the line currently
         being entered.'''
+        self.save_modified_history_if_needed(current)
+        self.history_cursor = len(self.history)-1
+        current.set_line(self.get_history_line_text())
         self.history_cursor = len(self.history)
-        current.set_line(self.history[-1].get_line_text())
 
     def reverse_search_history(self, searchfor, startpos=None):
         if startpos is None:
