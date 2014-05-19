@@ -107,6 +107,7 @@ class Console(baseconsole):
         self.saveattr = Console.ATTR_FG_WHITE # accessed by Readline
         self.position = None
         self.windowSize = None
+        self.positionIsSynchronized = False
         signal.signal(signal.SIGWINCH, self.handleWindowChange)
     
     def handleWindowChange(self, signum, frame):
@@ -240,22 +241,25 @@ class Console(baseconsole):
                 x = x % w # new x value
                 y += l
                 if y >= h: # scroll
-                    scroll += y - h + 1
-                    y = h - 1
+                    scroll += y - h
+                    y = h
+                    if x > 0:
+                        scroll += 1
+                        y -= 1
         log(u"# return write_scrolling('%s') = %d" % (text, scroll))
         # no scrolling occured so we can safely (until size is changed during line exiting)
-        if x == 0 and scroll==0:
-            self.position = None
-        else:
-            self.position = (x, y)
+        self.position = (x, y) # this is expected position after text rlmain will align according to it
+        if x == 0:
+            self.positionIsSynchronized = False
         log("# position updated to %s" % str(self.position))
         return scroll
 
     def _setPos(self, x, y):
-        if self.position == (x, y):
+        if self.positionIsSynchronized and self.position == (x, y):
             return
         self._write("\033[%d;%dH"%(y+1,x+1))
         self.position = (x,y)
+        self.positionIsSynchronized = True
         log("_setPos%s" % str(self.position))
 
     def _queryPos(self, clearCache=False):
@@ -271,6 +275,7 @@ class Console(baseconsole):
             return None
         else:
             self.position = (res[1]-1, res[0]-1)
+            self.positionIsSynchronized = True
             log("_queryPos() # = " + str(self.position))
             return self.position
 

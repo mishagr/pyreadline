@@ -66,6 +66,10 @@ class BaseReadline(object):
         log("\n".join(self.mode.rl_settings_to_string()))
 
         self.callback = None
+        if sys.platform.startswith('linux'):
+            self.should_reserve_one_line_for_asian_ime = False
+        else:
+            self.should_reserve_one_line_for_asian_ime = True
 
     def parse_and_bind(self, string):
         '''Parse and execute single line of a readline init file.'''
@@ -348,6 +352,9 @@ class BaseReadline(object):
         def enable_ipython_paste_for_paths(boolean):
             self.mode.enable_ipython_paste_for_paths = boolean
 
+        def reserve_one_line_for_asian_ime(boolean):
+            self.should_reserve_one_line_for_asian_ime = boolean
+        
         def debug_output(on, filename="pyreadline_debug_log.txt"): #Not implemented yet
             if on in ["on", "on_nologfile"]:
                 self.debug=True
@@ -400,6 +407,7 @@ class BaseReadline(object):
                "ctrl_c_tap_time_interval":ctrl_c_tap_time_interval,
                "kill_ring_to_clipboard":setkill_ring_to_clipboard,
                "enable_ipython_paste_for_paths":enable_ipython_paste_for_paths,
+               "reserve_one_line_for_asian_ime": reserve_one_line_for_asian_ime,
               }
         if os.path.isfile(inputrcpath): 
             try:
@@ -495,15 +503,26 @@ class Readline(BaseReadline):
         else:
             n = c.write_scrolling(ltext, self.command_color)
 
-        x, y = c.pos()       # TODO: Preserve one line for Asian IME(Input Method Editor) statusbar based on conf
+        x, y = c.pos()
         w, h = c.size()
-        if (n > 0) and (y == h - 1) and (x == 0):
+        if y > h - 1:
+            # This may happen when written text covers fully last line of screen.
+            # In this case automatic scrolling is not done. Although console (e.g. ansi_console)
+            # will emulate cursor position outside screen boundaries (0,h), since
+            # actual cursor position is undefined and can be different on different terminals
             c.scroll_window(-1)
+            y -= 1
+            n += 1
+            log("Screen overflow - scroll up set new pos: %d,%d" % (x,y))
             c.pos(x,y)
-            #c.scroll((0, 0, w, h), 0, -1)
-            #n += 1
-            #c.write("-----")
-            pass
+
+        if self.should_reserve_one_line_for_asian_ime and (y >= h - 1):
+            # Preserve one line for Asian IME(Input Method Editor) statusbar based on conf
+            log("Asian IME - scroll up")
+            c.scroll_window(-1)
+            y -= 1
+            c.scroll((0, 0, w, h), 0, -1)
+            n += 1
         self.line_end_pos = (x,y)
         self._update_prompt_pos(n)
         if hasattr(c, "clear_to_end_of_window"): #Work around function for ironpython due 
