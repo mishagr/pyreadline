@@ -82,11 +82,13 @@ class IncrementalSearchPromptMode(object):
             pass
         self.prompt = self.subsearch_prompt%(self._history.history_cursor, self.subsearch_query)
         self.l_buffer.set_line(self.line)
+        self.updateLine = True
 
     def _init_incremental_search(self, searchfun, init_event):
         """Initialize search prompt
         """
         log("init_incremental_search")
+        self._history.save_modified_history_if_needed(self.l_buffer)
         self.subsearch_query = ''
         self.subsearch_fun = searchfun
         self.subsearch_old_line = self.l_buffer.get_line_text()
@@ -149,6 +151,7 @@ class SearchPromptMode(object):
         else:
             pass
         self.prompt = self.non_inc_oldprompt + ":" + self.non_inc_query
+        self.updateLine = True
 
     def _init_non_i_search(self, direction):
         self.non_inc_direction = direction
@@ -200,6 +203,7 @@ class DigitArgumentMode(object):
             self.prompt = self._digit_argument_oldprompt
             raise LeaveModeTryNext
         self.prompt = "(arg: %s) "%self.argument
+        self.updateLine = True
 
     def _init_digit_argument(self, keyinfo):
         """Initialize search prompt

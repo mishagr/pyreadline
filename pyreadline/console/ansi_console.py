@@ -247,7 +247,6 @@ class Console(baseconsole):
                         scroll += 1
                         y -= 1
         log(u"# return write_scrolling('%s') = %d" % (text, scroll))
-        # no scrolling occured so we can safely (until size is changed during line exiting)
         self.position = (x, y) # this is expected position after text rlmain will align according to it
         if x == 0:
             self.positionIsSynchronized = False
