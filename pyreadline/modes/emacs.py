@@ -70,6 +70,7 @@ class IncrementalSearchPromptMode(object):
         elif keytuple in revtuples:
             self.subsearch_fun = self._history.reverse_search_history
             self.subsearch_prompt = "reverse-i-search%d`%s': "
+            log("revtuple subsearch="+self.subsearch_query)
             self.line = self.subsearch_fun(self.subsearch_query)
         elif keytuple in fwdtuples:
             self.subsearch_fun = self._history.forward_search_history
@@ -77,11 +78,16 @@ class IncrementalSearchPromptMode(object):
             self.line = self.subsearch_fun(self.subsearch_query)
         elif keyinfo.control == False and keyinfo.meta == False:
             self.subsearch_query += keyinfo.char
+            log("char subsearch="+self.subsearch_query)
             self.line = self.subsearch_fun(self.subsearch_query)
         else:
             pass
         self.prompt = self.subsearch_prompt%(self._history.history_cursor, self.subsearch_query)
-        self.l_buffer.set_line(self.line)
+        if isinstance(self.line, lineobj.TextLine):
+            self.l_buffer.set_line(self.line.get_line_text())
+            self.l_buffer.point = self.line.point
+        else:
+            self.l_buffer.set_line(self.line)
         self.updateLine = True
 
     def _init_incremental_search(self, searchfun, init_event):

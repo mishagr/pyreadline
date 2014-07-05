@@ -387,6 +387,8 @@ class TextLine(object):
     def __contains__(self, txt):
         return txt in self.get_line_text()
 
+    def find(self, txt):
+        return self.get_line_text().find(txt)
 
 lines = [TextLine("abc"),
          TextLine("abc def"),

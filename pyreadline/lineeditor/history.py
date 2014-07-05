@@ -6,7 +6,7 @@
 #  the file COPYING, distributed as part of this software.
 #*****************************************************************************
 from __future__ import print_function, unicode_literals, absolute_import
-import re, operator, string, sys, os
+import re, operator, string, sys, os, copy
 
 from pyreadline.unicode_helper import ensure_unicode, ensure_str
 if "pyreadline" in sys.modules:
@@ -122,6 +122,8 @@ class LineHistory(object):
         log('add_history line="%s" currentlen is %d' % (line.get_line_text(), len(self.history)))
         if not hasattr(line, "get_line_text"):
             line = lineobj.ReadLineTextBuffer(line)
+        else:
+            line.end_of_line()
         if not line.get_line_text():
             if len(self.history) > 0 and len(self.history[-1].get_line_text()) == 0:
                 self.history = self.history[:-1]
@@ -193,8 +195,10 @@ class LineHistory(object):
 
         result =  lineobj.ReadLineTextBuffer("")
 
+        find_pos = -1
         for idx, line in list(enumerate(self.history))[startpos:0:-1]:
-            if searchfor in line:
+            find_pos = line.find(searchfor)
+            if find_pos >= 0:
                 startpos = idx
                 break
 
@@ -203,12 +207,16 @@ class LineHistory(object):
         if self.last_search_for == searchfor and startpos > 0:
             startpos -= 1
             for idx, line in list(enumerate(self.history))[startpos:0:-1]:
-                if searchfor in line:
+                find_pos = line.find(searchfor)
+                if find_pos >= 0:
                     startpos = idx
                     break
 
         if self.history:                    
-            result = self.history[startpos].get_line_text()
+            result = self.history[startpos]
+            if find_pos >= 0:
+                result = copy.copy(result)
+                result.point = find_pos
         else:
             result = ""
         self.history_cursor = startpos
@@ -223,8 +231,10 @@ class LineHistory(object):
         
         result =  lineobj.ReadLineTextBuffer("")
 
+        find_pos = -1
         for idx, line in list(enumerate(self.history))[startpos:]:
-            if searchfor in line:
+            find_pos = line.find(searchfor)
+            if find_pos >= 0:
                 startpos = idx
                 break
 
@@ -233,12 +243,16 @@ class LineHistory(object):
         if self.last_search_for == searchfor and startpos < self.get_current_history_length()-1:
             startpos += 1
             for idx, line in list(enumerate(self.history))[startpos:]:
-                if searchfor in line:
+                find_pos = line.find(searchfor)
+                if find_pos >= 0:
                     startpos = idx
                     break
 
         if self.history:                    
-            result = self.history[startpos].get_line_text()
+            result = self.history[startpos]
+            if find_pos >= 0:
+                result = copy.copy(result)
+                result.point = find_pos
         else:
             result = ""
         self.history_cursor = startpos

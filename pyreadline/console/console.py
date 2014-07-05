@@ -25,7 +25,7 @@ from pyreadline.unicode_helper import ensure_unicode, ensure_str
 from pyreadline.keysyms import make_KeyPress, KeyPress
 from pyreadline.console.ansi import AnsiState, AnsiWriter
 
-from consolebase import baseconsole
+from pyreadline.console.consolebase import baseconsole
 
 try:
     import ctypes.util
